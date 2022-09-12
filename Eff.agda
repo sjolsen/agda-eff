@@ -8,7 +8,9 @@ module Eff {a : Level} where
   open import Data.Nat hiding (_<_)
   open import Data.Nat.Induction
   open import Data.Nat.Properties
+  open import Data.Product
   open import Data.Sum
+  open import Data.Unit
   open import Function
   open import Relation.Binary
   open import Relation.Binary.PropositionalEquality
@@ -129,6 +131,9 @@ module Eff {a : Level} where
   run : Eff [] A → A
   run (pure x) = x
 
+  -- I'm not particularly convinced this is actually true, but constructing the
+  -- appropriate recursion scheme is really hard.
+  {-# TERMINATING #-}
   handle-relay : (A → Eff R B)
                → (∀ {X} → T X → (X → Eff R B) → Eff R B)
                → Eff (T ∷ R) A → Eff R B
@@ -142,3 +147,18 @@ module Eff {a : Level} where
 
   ask : ⦃ Reader A ∈ R ⦄ → Eff R A
   ask = send get
+
+  runReader : A → Eff (Reader A ∷ R) B → Eff R B
+  runReader i = handle-relay return λ where get k → k i
+
+  data Writer (A : Set a) : Set a → Set a where
+    put : A → Writer A (Lift _ ⊤)
+
+  tell : ⦃ Writer A ∈ R ⦄ → A → Eff R _
+  tell o = send (put o)
+
+  runWriter : Eff (Writer A ∷ R) B → Eff R (B × List A)
+  runWriter = handle-relay (λ x → return (x , []))
+    λ where (put o) k → do
+      (x , l) ← k _
+      return (x , o ∷ l)
