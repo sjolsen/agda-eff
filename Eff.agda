@@ -12,7 +12,6 @@ module Eff {a : Level} where
   open import Data.Sum
   open import Data.Unit
   open import Function
-  open import Relation.Binary
   open import Relation.Binary.PropositionalEquality
 
   Req : Set (lsuc a)
@@ -73,12 +72,9 @@ module Eff {a : Level} where
     size (leaf k)   = 1
     size (node l r) = size l + size r
 
-    _<_ : REL (Cont R A B) (Cont R C D) _
-    x < y = size x <′ size y
-
     data ViewL {R : List Req} {A B : Set a} (k : Cont R A B) : Set (lsuc a) where
       t1 : (A → Eff R B) → ViewL k
-      t* : (A → Eff R C) → (x : Cont R C B) → x < k → ViewL k
+      t* : (A → Eff R C) → (x : Cont R C B) → size x <′ size k → ViewL k
 
     tviewl : (x : Cont R A B) -> ViewL x
     tviewl (leaf r) = t1 r
