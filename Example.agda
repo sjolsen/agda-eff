@@ -22,7 +22,7 @@ module Example where
   addN : ⦃ Reader ℕ ∈ R ⦄ → ℕ → Eff R ℕ
   addN n = foldl _>=>_ return (replicate n addGet) 0
 
-  t1 : 11 ≡ (run ∘ runReader 10 $ addGet ⦃ here refl ⦄ 1)
+  t1 : 11 ≡ (run (ε · runReader 10) $ addGet 1)
   t1 = refl
 
   rdwr : ⦃ Reader ℕ ∈ R ⦄ → ⦃ Writer String ∈ R ⦄ → Eff R ℕ
@@ -32,6 +32,5 @@ module Example where
     tell "end"
     return r
 
-  -- TODO: Fix instance search
-  t2 : (100 , "begin" ∷ "end" ∷ []) ≡ (run ∘ runReader 10 ∘ runWriter $ rdwr ⦃ there (here refl) ⦄ ⦃ here refl ⦄)
+  t2 : (100 , "begin" ∷ "end" ∷ []) ≡ (run (ε · runReader 10 · runWriter) $ rdwr)
   t2 = refl

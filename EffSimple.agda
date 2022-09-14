@@ -91,9 +91,6 @@ module EffSimple {a : Level} where
   send : ⦃ T ∈ R ⦄ → T A → Eff R A
   send t = impure (inj t) pure
 
-  run : Eff [] A → A
-  run (pure x) = x
-
   handle-relay′ : (A → Eff R B)
                 → (∀ {X} → T X → (X → Eff R B) → Eff R B)
                 → (m : Eff (T ∷ R) A)
@@ -111,6 +108,32 @@ module EffSimple {a : Level} where
                → (∀ {X} → T X → (X → Eff R B) → Eff R B)
                → Handler T R A B
   handle-relay ret h m = handle-relay′ ret h m (<-wellFounded _)
+
+  infixl 9 _·_
+  data Handlers : List Req → Set a → Set a → Set (lsuc a) where
+    ε   : Handlers [] A A
+    _·_ : Handlers R B C → Handler T R A B → Handlers (T ∷ R) A C
+
+  Constrained′ : (R : List Req) → (A : Set a) → Σ (Set (lsuc a)) λ B → (B → Eff R A)
+  Constrained′ R A = go (mapWith∈ R (λ {T} T∈R → T , T∈R))
+    where
+      go : List (Σ[ U ∈ Req ] U ∈ R) → Σ (Set (lsuc a)) λ B → (B → Eff R A)
+      go [] = Eff R A , id
+      go ((T , T∈R) ∷ S) with go S
+      ... | B , p = (⦃ T ∈ R ⦄ → B) , λ x → p (x ⦃ T∈R ⦄)
+
+  Constrained : (R : List Req) → (A : Set a) → Set (lsuc a)
+  Constrained R A = proj₁ (Constrained′ R A)
+
+  satisfy : (R : List Req) → (A : Set a) → Constrained R A → Eff R A
+  satisfy R A x = proj₂ (Constrained′ R A) x
+
+  run′ : Handlers R A B → Eff R A → B
+  run′ {R = []} ε (pure x) = x
+  run′ {R = T ∷ R} (hₛ · h) m = run′ hₛ (h m)
+
+  run : Handlers R A B → Constrained R A → B
+  run h m = run′ h (satisfy _ _ m)
 
   data Reader (A : Set a) : Set a → Set a where
     get : Reader A A
